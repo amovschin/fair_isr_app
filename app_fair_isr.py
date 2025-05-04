@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
-from fair_isr_utils import calcul_impot_foyer, calcul_impot_indiv
+from fair_isr_utils import subtract_d, calcul_impot_indiv
 
 # --- Title ---
 st.title("Calcul de l'impôt sur le revenu individuel")
@@ -13,6 +13,10 @@ if 'show_impot' not in st.session_state:
     st.session_state['show_impot'] = False
 if 'show_rap' not in st.session_state:
     st.session_state['show_rap'] = False
+if 'show_warning_7UD' not in st.session_state:
+    st.session_state['show_warning_7UD'] = False
+if 'msg_warning_7UD' not in st.session_state:
+    st.session_state['msg_warning_7UD'] = ''
 
 if 'name_1' not in st.session_state:
     st.session_state['name_1'] = "Déclarant 1"
@@ -23,7 +27,7 @@ if 'salaire_1' not in st.session_state:
 if 'salaire_2' not in st.session_state:
     st.session_state['salaire_2'] = 0.0
 if 'nb_parts' not in st.session_state:
-    st.session_state['nb_parts'] = 0.0
+    st.session_state['nb_parts'] = 1.0
 
 # --- User Inputs ---
 col1, col2 = st.columns(2)
@@ -40,7 +44,7 @@ with col2:
     salaire_2 = st.number_input(f"Revenus du déclarant 2", 
                                 min_value=0.0, format="%.0f", key="salaire_2")
 
-nb_parts = st.number_input(f"Nombre de parts pour le foyer", min_value=0.0, format="%.1f", key="nb_parts")
+nb_parts = st.number_input(f"Nombre de parts pour le foyer", min_value=1.0, format="%.1f", key="nb_parts")
 
 # --- Other parameters  ---
 # barème d'imposition
@@ -51,6 +55,9 @@ plafond_demi_part_2025 = 1791
 
 # plafond de dépense par enfant gardé
 plafond_depense_par_enfant_gardé = 3500
+
+# plafond case 7UD
+plafond_7UD = 1000
 
 if 'impot_1' not in st.session_state:
     st.session_state['impot_1'] = 0
@@ -157,7 +164,37 @@ avance = st.number_input(f"Avance perçue sur les réductions et crédits d'impo
                          min_value=0.0, format="%.0f", key="avance")
 
 # --- Compute ---
-if st.button("Calculer le reste à payer / récupérer"):
+def check_7UD_threshold():
+    case_7UD_1 = st.session_state['case_7UD_1']
+    case_7UF_1 = st.session_state['case_7UF_1']
+    case_7UD_2 = st.session_state['case_7UD_2']
+    case_7UF_2 = st.session_state['case_7UF_2']
+    if case_7UD_1 + case_7UD_2 > plafond_7UD:
+        exces_7UD = case_7UD_1 + case_7UD_2 - plafond_7UD
+        # retrait de l'excès
+        c_1, c_2 = subtract_d([case_7UD_1, case_7UD_2], exces_7UD)
+        # transfert vers la case 7UF
+        delta_1 = case_7UD_1 - c_1
+        delta_2 = case_7UD_2 - c_2
+        case_7UF_1 += delta_1
+        case_7UF_2 += delta_2
+        case_7UD_1 -= delta_1
+        case_7UD_2 -= delta_2
+        st.session_state['case_7UD_1'] = case_7UD_1
+        st.session_state['case_7UF_1'] = case_7UF_1
+        st.session_state['case_7UD_2'] = case_7UD_2
+        st.session_state['case_7UF_2'] = case_7UF_2
+        st.session_state['show_warning_7UD'] = True
+        st.session_state['msg_warning_7UD'] = f"""
+        La case 7UD ne peut pas dépasser {plafond_7UD}. L'excédent à été déplacé 
+        vers la case 7UF ({delta_1} pour {name_1}, {delta_2} pour {name_2})
+        """
+    else:
+        st.session_state['show_warning_7UD'] = False
+        st.session_state['msg_warning_7UD'] = ''
+        
+
+if st.button("Calculer le reste à payer / récupérer", on_click=check_7UD_threshold):
     # impot
     impot_1 = st.session_state['impot_1']
     impot_2 = st.session_state['impot_2']
@@ -165,8 +202,13 @@ if st.button("Calculer le reste à payer / récupérer"):
     pas_2 = st.session_state['pas_2']
     
     # Réduction d'impôt
-    reduc_1 = st.session_state['case_7UD_1'] * 0.75 + st.session_state['case_7UF_1'] * 0.66
-    reduc_2 = st.session_state['case_7UD_2'] * 0.75 + st.session_state['case_7UF_2'] * 0.66
+    case_7UD_1 = st.session_state['case_7UD_1']
+    case_7UF_1 = st.session_state['case_7UF_1']
+    case_7UD_2 = st.session_state['case_7UD_2']
+    case_7UF_2 = st.session_state['case_7UF_2']
+
+    reduc_1 = case_7UD_1 * 0.75 + case_7UF_1 * 0.66
+    reduc_2 = case_7UD_2 * 0.75 + case_7UF_2 * 0.66
     st.session_state['reduc_1'] = reduc_1
     st.session_state['reduc_2'] = reduc_2
 
@@ -196,6 +238,9 @@ if st.button("Calculer le reste à payer / récupérer"):
     st.session_state['rap_corrige_2'] = rap_corrige_2
 
     st.session_state['show_rap'] = True
+
+if st.session_state['show_warning_7UD']:
+    st.warning(st.session_state["msg_warning_7UD"])
 
 if st.session_state['show_rap']:
     reduc_1 = st.session_state['reduc_1']
