@@ -24,7 +24,7 @@ with col1:
 
 with col2:
     st.subheader("Déclarant 2")
-    person2_name = st.text_input("Nom du déclarant 2", value="Déclarant 1")
+    person2_name = st.text_input("Nom du déclarant 2", value="Déclarant 2")
     salaire_2 = st.number_input(f"Revenus de {person2_name}", min_value=0.0, format="%.0f", key="salaire_2")
 
 nb_parts = st.number_input(f"Nombre de parts pour le foyer", min_value=0.0, format="%.1f", key="nb_parts")
@@ -61,10 +61,12 @@ if st.button("Calculer l'impôt individuel"):
     st.session_state['show_impot'] = True
 
 if st.session_state['show_impot']:
-    st.success(f"Revenu net imposable de {person1_name}: {st.session_state['rni_1']:.0f}")
-    st.success(f"Revenu net imposable de {person2_name}: {st.session_state['rni_2']:.0f}")
-    st.success(f"L'impôt sur le revenu de {person1_name} est {abs(st.session_state['impot_1']):.0f}")
-    st.success(f"L'impôt sur le revenu de {person2_name} est {abs(st.session_state['impot_2']):.0f}")
+    st.success(f"Revenu net imposable: {person1_name} --> {st.session_state['rni_1']:.0f}, "
+               f"{person2_name} --> {st.session_state['rni_2']:.0f}, "
+               f"total --> {abs(st.session_state['rni_1'] + st.session_state['rni_2']):.0f}")
+    st.success(f"Impôt sur le revenu: {person1_name} --> {abs(st.session_state['impot_1']):.0f}, "
+               f"{person2_name} --> {abs(st.session_state['impot_2']):.0f}, "
+               f"total --> {abs(st.session_state['impot_1'] + st.session_state['impot_2']):.0f}")
 
 
 ### Reste à payer / récupérer
@@ -119,25 +121,17 @@ if st.button("Calculer le reste à payer / récupérer"):
     rap_1 = impot_1 - reduc_1 - credit_1 - pas_1
     rap_2 = impot_2 - reduc_2 - credit_2 - pas_2
     rap_foyer = rap_1 + rap_2
-    print(f"impot_1={impot_1}, reduc_1={reduc_1}, credit_1={credit_1}, pas_1={pas_1}, rap_1={rap_1}")
     rap_corrige_1 = rap_1 + avance / 2
     rap_corrige_2 = rap_2 + avance / 2
     rap_corrige_foyer = rap_corrige_1 + rap_corrige_2
 
-    st.success(f"réduction d'impôt pour le déclarant 1: {reduc_1:.0f}")
-    st.success(f"réduction d'impôt pour le déclarant 2: {reduc_2:.0f}")
-    st.success(f"réduction d'impôt pour le foyer: {reduc_foyer:.0f}")
-
-    st.success(f"crédit d'impôt pour le déclarant 1: {credit_1:.0f}")
-    st.success(f"crédit d'impôt pour le déclarant 2: {credit_2:.0f}")
-    st.success(f"crédit d'impôt pour le foyer: {credit_foyer:.0f}")
-
-    st.success(f"reste à {'payer' if rap_1>0 else 'récupérer'} pour déclarant 1 (avant avance perçue): {abs(rap_1):.0f}")
-    st.success(f"reste à {'payer' if rap_2>0 else 'récupérer'} pour déclarant 2 (avant avance perçue): {abs(rap_2):.0f}")
-    st.success(f"reste à {'payer' if rap_foyer>0 else 'récupérer'} pour le foyer (avant avance perçue): {abs(rap_foyer):.0f}")
-
-    st.success(f"reste à {'payer' if rap_corrige_1>0 else 'récupérer'} pour déclarant 1 (après avance perçue): {abs(rap_corrige_1):.0f}")
-    st.success(f"reste à {'payer' if rap_corrige_2>0 else 'récupérer'} pour déclarant 2 (après avance perçue): {abs(rap_corrige_2):.0f}")
-    st.success(f"reste à {'payer' if rap_corrige_foyer>0 else 'récupérer'} pour le foyer (après avance perçue): {abs(rap_corrige_foyer):.0f}")
+    st.success(f"réduction d'impôt: {person1_name} --> **{reduc_1:.0f}**, {person2_name} --> **{reduc_2:.0f}** (total --> {reduc_foyer:.0f})")
+    st.success(f"crédit d'impôt: {person1_name} --> **{credit_1:.0f}**, {person2_name} --> **{credit_2:.0f}** (total --> {credit_foyer:.0f})")
+    st.success(f"Avant avance perçue, {person1_name} doit **{'payer' if rap_1>0 else 'récupérer'} {abs(rap_1):.0f}**, "
+               f"{person2_name} doit **{'payer' if rap_2>0 else 'récupérer'} {abs(rap_2):.0f}** "
+               f"(le foyer doit {'payer' if rap_foyer>0 else 'récupérer'} {abs(rap_foyer):.0f})")
+    st.success(f"Après avance perçue, {person1_name} doit **{'payer' if rap_corrige_1>0 else 'récupérer'} {abs(rap_corrige_1):.0f}**, "
+               f"{person2_name} doit **{'payer' if rap_corrige_2>0 else 'récupérer'} {abs(rap_corrige_2):.0f}** "
+               f"(le foyer doit encore {'payer' if rap_corrige_foyer>0 else 'récupérer'} {abs(rap_corrige_foyer):.0f})")
 
 
