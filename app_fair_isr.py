@@ -9,18 +9,23 @@ st.title("Calcul de l'impôt sur le revenu individuel")
 ### Impôt 
 st.header("Calcul de l'impôt individuel")
 
+if 'show_impot' not in st.session_state:
+    st.session_state['show_impot'] = False
+if 'show_rap' not in st.session_state:
+    st.session_state['show_rap'] = False
+
 # --- User Inputs ---
 col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Déclarant 1")
     person1_name = st.text_input("Nom du déclarant 1", value="Déclarant 1")
-    salaire_1 = st.number_input(f"Revenus de {person1_name}", min_value=0.0, format="%.0f", key="rni_1")
+    salaire_1 = st.number_input(f"Revenus de {person1_name}", min_value=0.0, format="%.0f", key="salaire_1")
 
 with col2:
     st.subheader("Déclarant 2")
     person2_name = st.text_input("Nom du déclarant 2", value="Déclarant 1")
-    salaire_2 = st.number_input(f"Revenus de {person2_name}", min_value=0.0, format="%.0f", key="rni_2")
+    salaire_2 = st.number_input(f"Revenus de {person2_name}", min_value=0.0, format="%.0f", key="salaire_2")
 
 nb_parts = st.number_input(f"Nombre de parts pour le foyer", min_value=0.0, format="%.1f", key="nb_parts")
 
@@ -34,21 +39,32 @@ plafond_demi_part_2025 = 1791
 # plafond de dépense par enfant gardé
 plafond_depense_par_enfant_gardé = 3500
 
-impot_1 = 0
-impot_2 = 0
+if 'impot_1' not in st.session_state:
+    st.session_state['impot_1'] = 0
+if 'impot_2' not in st.session_state:
+    st.session_state['impot_2'] = 0
+if 'rni_1' not in st.session_state:
+    st.session_state['rni_1'] = 0
+if 'rni_2' not in st.session_state:
+    st.session_state['rni_2'] = 0
 
 # --- Compute ---
 if st.button("Calculer l'impôt individuel"):
     # Here, call your script functions
     rni_1 = salaire_1 * 0.9
     rni_2 = salaire_2 * 0.9
-    st.success(f"Revenu net imposable de {person1_name}: {rni_1}")
-    st.success(f"Revenu net imposable de {person2_name}: {rni_2}")
     ii_1, ii_2 = calcul_impot_indiv(rni_1, rni_2, nb_parts, bareme=bareme_2025, plafond_demi_part=plafond_demi_part_2025)
-    impot_1 += ii_1
-    impot_2 += ii_2
-    st.success(f"L'impôt sur le revenu de {person1_name} est {abs(impot_1):.0f}")
-    st.success(f"L'impôt sur le revenu de {person2_name} est {abs(impot_2):.0f}")
+    st.session_state['rni_1'] = rni_1
+    st.session_state['rni_2'] = rni_2
+    st.session_state['impot_1'] = ii_1
+    st.session_state['impot_2'] = ii_2
+    st.session_state['show_impot'] = True
+
+if st.session_state['show_impot']:
+    st.success(f"Revenu net imposable de {person1_name}: {st.session_state['rni_1']:.0f}")
+    st.success(f"Revenu net imposable de {person2_name}: {st.session_state['rni_2']:.0f}")
+    st.success(f"L'impôt sur le revenu de {person1_name} est {abs(st.session_state['impot_1']):.0f}")
+    st.success(f"L'impôt sur le revenu de {person2_name} est {abs(st.session_state['impot_2']):.0f}")
 
 
 ### Reste à payer / récupérer
@@ -79,6 +95,10 @@ avance = st.number_input(f"Avance perçue sur les réductions et crédits d'impo
 
 # --- Compute ---
 if st.button("Calculer le reste à payer / récupérer"):
+    # impot
+    impot_1 = st.session_state['impot_1']
+    impot_2 = st.session_state['impot_2']
+    
     # Réduction d'impôt
     reduc_1 = case_7UD_1 * 0.75 + case_7UF_1 * 0.66
     reduc_2 = case_7UD_2 * 0.75 + case_7UF_2 * 0.66
@@ -99,25 +119,25 @@ if st.button("Calculer le reste à payer / récupérer"):
     rap_1 = impot_1 - reduc_1 - credit_1 - pas_1
     rap_2 = impot_2 - reduc_2 - credit_2 - pas_2
     rap_foyer = rap_1 + rap_2
-
+    print(f"impot_1={impot_1}, reduc_1={reduc_1}, credit_1={credit_1}, pas_1={pas_1}, rap_1={rap_1}")
     rap_corrige_1 = rap_1 + avance / 2
     rap_corrige_2 = rap_2 + avance / 2
     rap_corrige_foyer = rap_corrige_1 + rap_corrige_2
 
-    st.success(f"réduction d'impôt pour le déclarant 1: {reduc_1}")
-    st.success(f"réduction d'impôt pour le déclarant 2: {reduc_2}")
-    st.success(f"réduction d'impôt pour le foyer: {reduc_foyer}")
+    st.success(f"réduction d'impôt pour le déclarant 1: {reduc_1:.0f}")
+    st.success(f"réduction d'impôt pour le déclarant 2: {reduc_2:.0f}")
+    st.success(f"réduction d'impôt pour le foyer: {reduc_foyer:.0f}")
 
-    st.success(f"crédit d'impôt pour le déclarant 1: {credit_1}")
-    st.success(f"crédit d'impôt pour le déclarant 2: {credit_2}")
-    st.success(f"crédit d'impôt pour le foyer: {credit_foyer}")
+    st.success(f"crédit d'impôt pour le déclarant 1: {credit_1:.0f}")
+    st.success(f"crédit d'impôt pour le déclarant 2: {credit_2:.0f}")
+    st.success(f"crédit d'impôt pour le foyer: {credit_foyer:.0f}")
 
-    st.success(f"reste à {'payer' if rap_1>0 else 'récupérer'} pour déclarant 1 (avant avance perçue): {rap_1}")
-    st.success(f"reste à {'payer' if rap_2>0 else 'récupérer'} pour déclarant 2 (avant avance perçue): {rap_2}")
-    st.success(f"reste à {'payer' if rap_foyer>0 else 'récupérer'} pour le foyer (avant avance perçue): {rap_foyer}")
+    st.success(f"reste à {'payer' if rap_1>0 else 'récupérer'} pour déclarant 1 (avant avance perçue): {abs(rap_1):.0f}")
+    st.success(f"reste à {'payer' if rap_2>0 else 'récupérer'} pour déclarant 2 (avant avance perçue): {abs(rap_2):.0f}")
+    st.success(f"reste à {'payer' if rap_foyer>0 else 'récupérer'} pour le foyer (avant avance perçue): {abs(rap_foyer):.0f}")
 
-    st.success(f"reste à {'payer' if rap_corrige_1>0 else 'récupérer'} pour déclarant 1 (après avance perçue): {rap_corrige_1}")
-    st.success(f"reste à {'payer' if rap_corrige_2>0 else 'récupérer'} pour déclarant 2 (après avance perçue): {rap_corrige_2}")
-    st.success(f"reste à {'payer' if rap_corrige_foyer>0 else 'récupérer'} pour le foyer (après avance perçue): {rap_corrige_foyer}")
+    st.success(f"reste à {'payer' if rap_corrige_1>0 else 'récupérer'} pour déclarant 1 (après avance perçue): {abs(rap_corrige_1):.0f}")
+    st.success(f"reste à {'payer' if rap_corrige_2>0 else 'récupérer'} pour déclarant 2 (après avance perçue): {abs(rap_corrige_2):.0f}")
+    st.success(f"reste à {'payer' if rap_corrige_foyer>0 else 'récupérer'} pour le foyer (après avance perçue): {abs(rap_corrige_foyer):.0f}")
 
 
